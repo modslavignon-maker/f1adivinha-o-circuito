@@ -1,0 +1,1532 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>F1 Circuit Guesser</title>
+
+<style>
+
+*{
+    margin:0;
+    padding:0;
+    box-sizing:border-box;
+    font-family:Arial,Helvetica,sans-serif;
+}
+
+body{
+    background:#111;
+    color:white;
+    min-height:100vh;
+    display:flex;
+    justify-content:center;
+    padding:30px;
+}
+
+.container{
+    width:100%;
+    max-width:1200px;
+}
+
+h1{
+    text-align:center;
+    margin-bottom:10px;
+}
+
+.subtitle{
+    text-align:center;
+    color:#aaa;
+    margin-bottom:30px;
+}
+
+.game-box{
+    background:#1b1b1b;
+    border-radius:12px;
+    padding:20px;
+}
+
+.search-area{
+    position:relative;
+}
+
+#guessInput{
+    width:100%;
+    padding:14px;
+    border:none;
+    border-radius:8px;
+    font-size:16px;
+}
+
+#suggestions{
+    position:absolute;
+    width:100%;
+    background:#222;
+    max-height:300px;
+    overflow-y:auto;
+    border-radius:8px;
+    margin-top:4px;
+    z-index:100;
+}
+
+.suggestion{
+    padding:10px;
+    cursor:pointer;
+}
+
+.suggestion:hover{
+    background:#333;
+}
+
+.info{
+    margin-top:20px;
+    text-align:center;
+}
+
+#attempts{
+    font-size:20px;
+    font-weight:bold;
+}
+
+.history{
+    margin-top:25px;
+}
+
+.row{
+    display:grid;
+    grid-template-columns:
+    2fr
+    1fr
+    1fr
+    1fr
+    1fr
+    1fr;
+
+    gap:6px;
+    margin-bottom:8px;
+}
+
+.cell{
+    padding:12px;
+    border-radius:8px;
+    text-align:center;
+    font-weight:bold;
+}
+
+.header .cell{
+    background:#444;
+}
+
+.correct{
+    background:#16a34a;
+}
+
+.wrong{
+    background:#b91c1c;
+}
+
+.close{
+    background:#ca8a04;
+}
+
+#message{
+    margin-top:20px;
+    text-align:center;
+    font-size:22px;
+    font-weight:bold;
+}
+
+button{
+    margin-top:15px;
+    padding:12px 20px;
+    border:none;
+    border-radius:8px;
+    background:#e10600;
+    color:white;
+    font-weight:bold;
+    cursor:pointer;
+}
+
+button:hover{
+    opacity:0.9;
+}
+
+.hidden{
+    display:none;
+}
+
+.footer{
+    margin-top:25px;
+    text-align:center;
+    color:#aaa;
+}
+
+</style>
+</head>
+<body>
+
+<div class="container">
+
+    <h1>🏁 F1 Circuit Guesser</h1>
+
+    <div class="subtitle">
+        Adivinhe o circuito secreto da Fórmula 1.
+        Você possui apenas 5 tentativas.
+    </div>
+
+    <div class="game-box">
+
+        <div class="search-area">
+
+            <input
+            id="guessInput"
+            placeholder="Digite um circuito..."
+            autocomplete="off">
+
+            <div id="suggestions"></div>
+
+        </div>
+
+        <div class="info">
+            Tentativas restantes:
+            <span id="attempts">5</span>
+        </div>
+
+        <div class="history">
+
+            <div class="row header">
+
+                <div class="cell">Circuito</div>
+                <div class="cell">País</div>
+                <div class="cell">Comprimento</div>
+                <div class="cell">Inauguração</div>
+                <div class="cell">Curvas</div>
+                <div class="cell">Tipo</div>
+
+            </div>
+
+            <div id="historyRows"></div>
+
+        </div>
+
+        <div id="message"></div>
+
+        <div style="text-align:center;">
+            <button
+            id="restartBtn"
+            class="hidden">
+            Jogar Novamente
+            </button>
+        </div>
+
+    </div>
+
+    <div class="footer">
+        Todos os circuitos que já receberam um GP de Fórmula 1.
+    </div>
+
+</div>
+
+<script>
+
+/* =====================================
+   BANCO DE DADOS
+   PARTE 2 SERÁ INSERIDA AQUI
+===================================== */
+
+const circuits = [
+
+{
+name:"Le Mans Bugatti",
+country:"França",
+length:4.185,
+opened:1965,
+turns:14,
+type:"Autódromo"
+},
+
+{
+name:"Prince George",
+country:"África do Sul",
+length:3.920,
+opened:1934,
+turns:9,
+type:"Autódromo"
+},
+
+{
+name:"Anderstorp",
+country:"Suécia",
+length:4.025,
+opened:1968,
+turns:8,
+type:"Autódromo"
+},
+
+{
+name:"Monsanto",
+country:"Portugal",
+length:5.440,
+opened:1953,
+turns:9,
+type:"Rua"
+},
+
+{
+name:"Boavista",
+country:"Portugal",
+length:7.406,
+opened:1950,
+turns:12,
+type:"Rua"
+},
+
+{
+name:"Yeongam",
+country:"Coréia do Sul",
+length:5.615,
+opened:2010,
+turns:18,
+type:"Autódromo"
+},
+
+
+{
+name:"Buddh",
+country:"Índia",
+length:5.125,
+opened:2011,
+turns:16,
+type:"Autódromo"
+},
+
+{
+name:"Okayama",
+country:"Japão",
+length:3.703,
+opened:1990,
+turns:11,
+type:"Autódromo"
+},
+
+{
+name:"Djon-Prenois",
+country:"França",
+length:3.975,
+opened:1969,
+turns:12,
+type:"Autódromo"
+},
+
+{
+name:"Nurbugring GP-Strecke",
+country:"Alemanha",
+length:5.148,
+opened:1984,
+turns:15,
+type:"Autódromo"
+},
+
+{
+name:"Pedralbes",
+country:"Espanha",
+length:6.316,
+opened:1946,
+turns:6,
+type:"Rua"
+},
+
+{
+name:"Yas Marina",
+country:"Emirados Árabes Unidos",
+length:4.411,
+opened:2007,
+turns:16,
+type:"Autódromo"
+},
+
+{
+name:"Zolder",
+country:"Bélgica",
+length:4.010,
+opened:1963,
+turns:10,
+type:"Autódromo"
+},
+
+{
+name:"Mont-Tremblant",
+country:"Canadá",
+length:4.265,
+opened:1964,
+turns:17,
+type:"Autódromo"
+},
+
+{
+name:"Magny-Cours",
+country:"França",
+length:4.411,
+opened:1960,
+turns:17,
+type:"Autódromo"
+},
+
+{
+name:"Aintree",
+country:"Reino Unido",
+length:4828,
+opened:1954,
+turns:8,
+type:"Autódromo"
+},
+
+{
+name:"Interlagos",
+country:"Brasil",
+length:4.309,
+opened:1943,
+turns:15,
+type:"Autódromo"
+},
+
+{
+name:"Jacarepaguá",
+country:"Brasil",
+length:5.035,
+opened:1977,
+turns:11,
+type:"Autódromo"
+},
+
+{
+name:"Albert Park",
+country:"Austrália",
+length:5.278,
+opened:1953,
+turns:14,
+type:"Rua"
+},
+
+{
+name:"Adelaide Street Circuit",
+country:"Austrália",
+length:3.780,
+opened:1985,
+turns:16,
+type:"Rua"
+},
+
+{
+name:"Melbourne Grand Prix Circuit",
+country:"Austrália",
+length:5.278,
+opened:1996,
+turns:14,
+type:"Rua"
+},
+
+{
+name:"Ain-Diab",
+country:"Marrocos",
+length:7.618,
+opened:1957,
+turns:18,
+type:"Rua"
+},
+
+{
+name:"AVUS",
+country:"Alemanha",
+length:8.300,
+opened:1921,
+turns:4,
+type:"Autódromo"
+},
+
+{
+name:"Bahrain International Circuit",
+country:"Bahrein",
+length:5.412,
+opened:2004,
+turns:15,
+type:"Autódromo"
+},
+
+{
+name:"Baku City Circuit",
+country:"Azerbaijão",
+length:6.003,
+opened:2016,
+turns:20,
+type:"Rua"
+},
+
+{
+name:"Bremgarten",
+country:"Suíça",
+length:7.280,
+opened:1931,
+turns:12,
+type:"Rua"
+},
+
+{
+name:"Brands Hatch",
+country:"Reino Unido",
+length:4.265,
+opened:1926,
+turns:9,
+type:"Autódromo"
+},
+
+{
+name:"Buenos Aires",
+country:"Argentina",
+length:4.259,
+opened:1952,
+turns:15,
+type:"Autódromo"
+},
+
+{
+name:"Caesars Palace",
+country:"Estados Unidos",
+length:3.650,
+opened:1981,
+turns:14,
+type:"Rua"
+},
+
+{
+name:"Barcelona-Catalunya",
+country:"Espanha",
+length:4.657,
+opened:1991,
+turns:14,
+type:"Autódromo"
+},
+
+{
+name:"Charade",
+country:"França",
+length:8.055,
+opened:1958,
+turns:48,
+type:"Rua"
+},
+
+{
+name:"Circuit Gilles Villeneuve",
+country:"Canadá",
+length:4.361,
+opened:1978,
+turns:14,
+type:"Rua"
+},
+
+{
+name:"Circuit of the Americas",
+country:"Estados Unidos",
+length:5.513,
+opened:2012,
+turns:20,
+type:"Autódromo"
+},
+
+{
+name:"Dallas Fair Park",
+country:"Estados Unidos",
+length:3.901,
+opened:1984,
+turns:22,
+type:"Rua"
+},
+
+{
+name:"Detroit Street Circuit",
+country:"Estados Unidos",
+length:4.120,
+opened:1982,
+turns:17,
+type:"Rua"
+},
+
+{
+name:"Donington Park",
+country:"Reino Unido",
+length:4.023,
+opened:1931,
+turns:12,
+type:"Autódromo"
+},
+
+{
+name:"Estoril",
+country:"Portugal",
+length:4.360,
+opened:1972,
+turns:13,
+type:"Autódromo"
+},
+
+{
+name:"Fuji Speedway",
+country:"Japão",
+length:4.563,
+opened:1965,
+turns:16,
+type:"Autódromo"
+},
+
+{
+name:"Hockenheimring",
+country:"Alemanha",
+length:4.574,
+opened:1932,
+turns:17,
+type:"Autódromo"
+},
+
+{
+name:"Hungaroring",
+country:"Hungria",
+length:4.381,
+opened:1986,
+turns:14,
+type:"Autódromo"
+},
+
+{
+name:"Imola",
+country:"Itália",
+length:4.909,
+opened:1953,
+turns:19,
+type:"Autódromo"
+},
+
+{
+name:"Indianapolis Motor Speedway",
+country:"Estados Unidos",
+length:4.192,
+opened:1909,
+turns:13,
+type:"Autódromo"
+},
+
+{
+name:"Istanbul Park",
+country:"Turquia",
+length:5.338,
+opened:2005,
+turns:14,
+type:"Autódromo"
+},
+
+{
+name:"Jarama",
+country:"Espanha",
+length:3.404,
+opened:1967,
+turns:16,
+type:"Autódromo"
+},
+
+{
+name:"Jeddah Corniche Circuit",
+country:"Arábia Saudita",
+length:6.174,
+opened:2021,
+turns:27,
+type:"Rua"
+},
+
+{
+name:"Jerez",
+country:"Espanha",
+length:4.428,
+opened:1985,
+turns:15,
+type:"Autódromo"
+},
+
+{
+name:"Kyalami",
+country:"África do Sul",
+length:4.529,
+opened:1961,
+turns:16,
+type:"Autódromo"
+},
+
+{
+name:"Las Vegas Strip Circuit",
+country:"Estados Unidos",
+length:6.201,
+turns:17,
+opened:2023,
+type:"Rua"
+},
+
+{
+name:"Long Beach",
+country:"Estados Unidos",
+length:3.251,
+opened:1975,
+turns:11,
+type:"Rua"
+},
+
+{
+name:"Losail International Circuit",
+country:"Catar",
+length:5.419,
+opened:2004,
+turns:16,
+type:"Autódromo"
+},
+
+{
+name:"Marina Bay",
+country:"Singapura",
+length:4.928,
+opened:2008,
+turns:19,
+type:"Rua"
+},
+
+{
+name:"Miami International Autodrome",
+country:"Estados Unidos",
+length:5.412,
+opened:2022,
+turns:19,
+type:"Rua"
+},
+
+{
+name:"Monaco",
+country:"Mônaco",
+length:3.337,
+opened:1929,
+turns:19,
+type:"Rua"
+},
+
+{
+name:"Monza",
+country:"Itália",
+length:5.793,
+opened:1922,
+turns:11,
+type:"Autódromo"
+},
+
+{
+name:"Montjuic",
+country:"Espanha",
+length:3.791,
+opened:1969,
+turns:14,
+type:"Rua"
+},
+
+{
+name:"Mosport",
+country:"Canadá",
+length:3.957,
+opened:1961,
+turns:10,
+type:"Autódromo"
+},
+
+{
+name:"Mugello",
+country:"Itália",
+length:5.245,
+opened:1974,
+turns:15,
+type:"Autódromo"
+},
+
+{
+name:"Nivelles",
+country:"Bélgica",
+length:3.724,
+opened:1971,
+turns:13,
+type:"Autódromo"
+},
+
+{
+name:"Nürburgring",
+country:"Alemanha",
+length:5.148,
+opened:1927,
+turns:15,
+type:"Autódromo"
+},
+
+{
+name:"Nordschleife",
+country:"Alemanha",
+length:22.835,
+opened:1927,
+turns:154,
+type:"Autódromo"
+},
+
+{
+name:"Paul Ricard",
+country:"França",
+length:5.842,
+opened:1970,
+turns:15,
+type:"Autódromo"
+},
+
+{
+name:"Pescara",
+country:"Itália",
+length:25.579,
+opened:1924,
+turns:34,
+type:"Rua"
+},
+
+{
+name:"Portimao",
+country:"Portugal",
+length:4.653,
+opened:2008,
+turns:15,
+type:"Autódromo"
+},
+
+{
+name:"Reims-Gueux",
+country:"França",
+length:8.302,
+opened:1926,
+turns:14,
+type:"Rua"
+},
+
+{
+name:"Riverside",
+country:"Estados Unidos",
+length:5.271,
+opened:1957,
+turns:9,
+type:"Autódromo"
+},
+
+{
+name:"Road America",
+country:"Estados Unidos",
+length:6.515,
+opened:1955,
+turns:14,
+type:"Autódromo"
+},
+
+{
+name:"Rouen-Les-Essarts",
+country:"França",
+length:6.542,
+opened:1950,
+turns:14,
+type:"Rua"
+},
+
+{
+name:"Sepang",
+country:"Malásia",
+length:5.543,
+opened:1999,
+turns:15,
+type:"Autódromo"
+},
+
+{
+name:"Shanghai International Circuit",
+country:"China",
+length:5.451,
+opened:2004,
+turns:16,
+type:"Autódromo"
+},
+
+{
+name:"Silverstone",
+country:"Reino Unido",
+length:5.891,
+opened:1948,
+turns:18,
+type:"Autódromo"
+},
+
+{
+name:"Sochi Autodrom",
+country:"Rússia",
+length:5.848,
+opened:2014,
+turns:18,
+type:"Rua"
+},
+
+{
+name:"Spa-Francorchamps",
+country:"Bélgica",
+length:7.004,
+opened:1921,
+turns:19,
+type:"Autódromo"
+},
+
+{
+name:"Suzuka",
+country:"Japão",
+length:5.807,
+opened:1962,
+turns:18,
+type:"Autódromo"
+},
+
+{
+name:"Valencia Street Circuit",
+country:"Espanha",
+length:5.419,
+opened:2008,
+turns:25,
+type:"Rua"
+},
+
+{
+name:"Watkins Glen",
+country:"Estados Unidos",
+length:5.435,
+opened:1956,
+turns:11,
+type:"Autódromo"
+},
+
+{
+name:"Zandvoort",
+country:"Países Baixos",
+length:4.259,
+opened:1948,
+turns:14,
+type:"Autódromo"
+},
+
+{
+name:"Zeltweg",
+country:"Áustria",
+length:3.186,
+opened:1959,
+turns:9,
+type:"Autódromo"
+},
+
+{
+name:"Osterreichring",
+country:"Áustria",
+length:5.942,
+opened:1969,
+turns:16,
+type:"Autódromo"
+},
+
+{
+name:"A1 Ring",
+country:"Áustria",
+length:4.326,
+opened:1996,
+turns:10,
+type:"Autódromo"
+},
+
+{
+name:"Red Bull Ring",
+country:"Áustria",
+length:4.318,
+opened:2011,
+turns:10,
+type:"Autódromo"
+}
+
+];
+
+/* =====================================
+   VARIÁVEIS
+===================================== */
+
+let secretCircuit = null;
+let attempts = 5;
+
+/* =====================================
+   ELEMENTOS
+===================================== */
+
+const input =
+document.getElementById("guessInput");
+
+const suggestions =
+document.getElementById("suggestions");
+
+const historyRows =
+document.getElementById("historyRows");
+
+const attemptsText =
+document.getElementById("attempts");
+
+const message =
+document.getElementById("message");
+
+const restartBtn =
+document.getElementById("restartBtn");
+
+/* =====================================
+   INICIAR JOGO
+===================================== */
+
+function startGame(){
+
+    attempts = 5;
+
+    attemptsText.textContent =
+    attempts;
+
+    historyRows.innerHTML = "";
+
+    message.textContent = "";
+
+    input.disabled = false;
+
+    restartBtn.classList.add(
+    "hidden"
+    );
+
+    secretCircuit =
+    circuits[
+        Math.floor(
+            Math.random() *
+            circuits.length
+        )
+    ];
+
+}
+
+restartBtn.onclick =
+startGame;
+
+/* =====================================
+   AUTOCOMPLETE
+===================================== */
+
+input.addEventListener(
+"input",
+()=>{
+
+    const value =
+    input.value
+    .toLowerCase()
+    .trim();
+
+    suggestions.innerHTML = "";
+
+    if(!value) return;
+
+    circuits
+    .filter(c =>
+        c.name
+        .toLowerCase()
+        .includes(value)
+    )
+    .slice(0,10)
+    .forEach(c=>{
+
+        const div =
+        document.createElement(
+        "div"
+        );
+
+        div.className =
+        "suggestion";
+
+        div.textContent =
+        c.name;
+
+        div.onclick = ()=>{
+
+            input.value =
+            c.name;
+
+            suggestions.innerHTML=
+            "";
+
+        };
+
+        suggestions.appendChild(
+        div
+        );
+
+    });
+
+});
+
+/* =====================================
+   ENTER
+===================================== */
+
+input.addEventListener(
+"keydown",
+e=>{
+
+    if(e.key==="Enter"){
+
+        submitGuess(
+        input.value
+        );
+
+    }
+
+});
+
+/* =====================================
+   CORES
+===================================== */
+
+function getClass(
+value,
+target
+){
+
+    if(value === target)
+        return "correct";
+
+    return "wrong";
+}
+
+/* =====================================
+   COMPARAÇÃO NUMÉRICA
+===================================== */
+
+function getNumericClass(
+value,
+target,
+margin
+){
+
+    if(value===target)
+        return "correct";
+
+    if(
+        Math.abs(
+            value-target
+        )<=margin
+    ){
+        return "close";
+    }
+
+    return "wrong";
+}
+
+/* =====================================
+   TENTATIVA
+===================================== */
+
+function submitGuess(
+name
+){
+
+    if(attempts<=0)
+    return;
+
+    const guess =
+    circuits.find(
+        c =>
+        c.name
+        .toLowerCase()
+        ===
+        name
+        .toLowerCase()
+    );
+
+    if(!guess)
+    return;
+
+    suggestions.innerHTML="";
+    input.value="";
+
+    const row =
+    document.createElement(
+    "div"
+    );
+
+    row.className="row";
+
+    row.innerHTML=`
+
+        <div class="cell">
+            ${guess.name}
+        </div>
+
+        <div class="cell ${getClass(
+            guess.country,
+            secretCircuit.country
+        )}">
+            ${guess.country}
+        </div>
+
+        <div class="cell ${getNumericClass(
+            guess.length,
+            secretCircuit.length,
+            0.5
+        )}">
+            ${guess.length} km
+        </div>
+
+        <div class="cell ${getNumericClass(
+            guess.opened,
+            secretCircuit.opened,
+            10
+        )}">
+            ${guess.opened}
+        </div>
+
+        <div class="cell ${getNumericClass(
+            guess.turns,
+            secretCircuit.turns,
+            2
+        )}">
+            ${guess.turns}
+        </div>
+
+        <div class="cell ${getClass(
+            guess.type,
+            secretCircuit.type
+        )}">
+            ${guess.type}
+        </div>
+
+    `;
+
+    historyRows.appendChild(
+    row
+    );
+
+    attempts--;
+
+    attemptsText.textContent=
+    attempts;
+
+    if(
+        guess.name ===
+        secretCircuit.name
+    ){
+
+        message.innerHTML=
+        "🏆 Você acertou!";
+
+        endGame();
+
+        return;
+    }
+
+    if(attempts===0){
+
+        message.innerHTML=
+        `
+        ❌ Fim de jogo.<br>
+        Circuito correto:
+        <b>
+        ${secretCircuit.name}
+        </b>
+        `;
+
+        endGame();
+    }
+
+}
+
+/* =====================================
+   FINALIZAR
+===================================== */
+
+function endGame(){
+
+    input.disabled=true;
+
+    restartBtn.classList.remove(
+    "hidden"
+    );
+
+}
+
+/* =====================================
+   MELHORIAS
+===================================== */
+
+let previousCircuit = null;
+
+function chooseCircuit(){
+
+    if(circuits.length === 0){
+        return null;
+    }
+
+    if(circuits.length === 1){
+        return circuits[0];
+    }
+
+    let selected;
+
+    do{
+
+        selected =
+        circuits[
+            Math.floor(
+                Math.random() *
+                circuits.length
+            )
+        ];
+
+    }while(
+        previousCircuit &&
+        selected.name === previousCircuit.name
+    );
+
+    previousCircuit = selected;
+
+    return selected;
+}
+
+/* =====================================
+   NOVO START GAME
+===================================== */
+
+function startGame(){
+
+    attempts = 5;
+
+    attemptsText.textContent =
+    attempts;
+
+    historyRows.innerHTML = "";
+
+    message.innerHTML = "";
+
+    input.value = "";
+
+    input.disabled = false;
+
+    suggestions.innerHTML = "";
+
+    restartBtn.classList.add(
+        "hidden"
+    );
+
+    secretCircuit =
+    chooseCircuit();
+
+    console.log(
+        "Circuito sorteado:",
+        secretCircuit.name
+    );
+
+}
+
+/* =====================================
+   CLIQUE FORA FECHA AUTOCOMPLETE
+===================================== */
+
+document.addEventListener(
+"click",
+e=>{
+
+    if(
+        e.target !== input
+    ){
+        suggestions.innerHTML = "";
+    }
+
+});
+
+/* =====================================
+   FILTRAR CIRCUITOS JÁ TENTADOS
+===================================== */
+
+function alreadyGuessed(name){
+
+    const rows =
+    [...historyRows.children];
+
+    return rows.some(
+        row =>
+        row.children[0]
+        .textContent
+        .trim()
+        .toLowerCase()
+        ===
+        name
+        .trim()
+        .toLowerCase()
+    );
+
+}
+
+/* =====================================
+   SOBRESCREVER SUBMITGUESS
+===================================== */
+
+function submitGuess(name){
+
+    if(attempts <= 0)
+    return;
+
+    const guess =
+    circuits.find(
+        c =>
+        c.name
+        .toLowerCase()
+        ===
+        name
+        .toLowerCase()
+    );
+
+    if(!guess)
+        return;
+
+    if(
+        alreadyGuessed(
+            guess.name
+        )
+    ){
+        return;
+    }
+
+    suggestions.innerHTML = "";
+    input.value = "";
+
+    const row =
+    document.createElement(
+        "div"
+    );
+
+    row.className = "row";
+
+    row.innerHTML = `
+
+    <div class="cell">
+        ${guess.name}
+    </div>
+
+    <div class="cell ${getClass(
+        guess.country,
+        secretCircuit.country
+    )}">
+        ${guess.country}
+    </div>
+
+    <div class="cell ${getNumericClass(
+        guess.length,
+        secretCircuit.length,
+        0.5
+    )}">
+        ${guess.length} km
+    </div>
+
+    <div class="cell ${getNumericClass(
+        guess.opened,
+        secretCircuit.opened,
+        10
+    )}">
+        ${guess.opened}
+    </div>
+
+    <div class="cell ${getNumericClass(
+        guess.turns,
+        secretCircuit.turns,
+        2
+    )}">
+        ${guess.turns}
+    </div>
+
+    <div class="cell ${getClass(
+        guess.type,
+        secretCircuit.type
+    )}">
+        ${guess.type}
+    </div>
+
+    `;
+
+    historyRows.prepend(row);
+
+    attempts--;
+
+    attemptsText.textContent =
+    attempts;
+
+    if(
+        guess.name ===
+        secretCircuit.name
+    ){
+
+        message.innerHTML =
+        `
+        🏆 ACERTOU!
+        <br><br>
+        O circuito era:
+        <b>${secretCircuit.name}</b>
+        `;
+
+        endGame();
+
+        return;
+    }
+
+    if(attempts === 0){
+
+        message.innerHTML =
+        `
+        ❌ Suas tentativas acabaram.
+        <br><br>
+        O circuito correto era:
+        <br>
+        <b>${secretCircuit.name}</b>
+        `;
+
+        endGame();
+    }
+
+}
+
+/* =====================================
+   TECLA ESC
+===================================== */
+
+document.addEventListener(
+"keydown",
+e=>{
+
+    if(
+        e.key === "Escape"
+    ){
+        suggestions.innerHTML="";
+    }
+
+});
+
+/* =====================================
+   INICIAR
+===================================== */
+
+startGame();
+</script>
+
+</body>
+</html>
